@@ -64,6 +64,8 @@ func main() {
 	var disableCache bool
 	var cpuCount int
 	var key string
+	var repository string
+	var workdir string
 
 	ctx := Plakar{}
 	currentHostname, err := os.Hostname()
@@ -81,6 +83,13 @@ func main() {
 		cpuDefault = cpuDefault - 1
 	}
 
+	defaultWorkdir := fmt.Sprintf("%s/.plakar", currentUser.HomeDir)
+	defaultRepositoryPath := fmt.Sprintf("%s/store", defaultWorkdir)
+
+	if os.Getenv("PLAKAR_REPOSITORY") != "" {
+		defaultRepositoryPath = os.Getenv("PLAKAR_REPOSITORY")
+	}
+
 	flag.BoolVar(&disableCache, "no-cache", false, "disable local cache")
 	flag.BoolVar(&enableTime, "time", false, "enable time")
 	flag.BoolVar(&enableInfoOutput, "info", false, "enable info output")
@@ -88,6 +97,8 @@ func main() {
 	flag.BoolVar(&enableProfiling, "profile", false, "enable profiling")
 	flag.IntVar(&cpuCount, "cpu", cpuDefault, "limit the number of usable cores")
 	flag.StringVar(&key, "key", "", "key ID for encrypted plakar")
+	flag.StringVar(&workdir, "workdir", defaultWorkdir, "path to workdir")
+	flag.StringVar(&repository, "repository", defaultRepositoryPath, "path to repository")
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
 	var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
 	flag.Parse()
@@ -121,8 +132,8 @@ func main() {
 
 	ctx.Username = currentUser.Username
 	ctx.Hostname = currentHostname
-	ctx.Workdir = fmt.Sprintf("%s/.plakar", currentUser.HomeDir)
-	ctx.Repository = fmt.Sprintf("%s/store", ctx.Workdir)
+	ctx.Workdir = defaultWorkdir
+	ctx.Repository = repository
 	ctx.KeyID = key
 	ctx.MachineID = strings.ToLower(machineId)
 
