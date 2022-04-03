@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"log"
 
 	"github.com/poolpOrg/plakar/network"
 )
@@ -27,14 +28,21 @@ func init() {
 }
 
 func cmd_server(ctx Plakar, args []string) int {
+	var baseDirectory string
+
 	flags := flag.NewFlagSet("server", flag.ExitOnError)
+	flags.StringVar(&baseDirectory, "basedir", "", "base directory")
 	flags.Parse(args)
+
+	if baseDirectory == "" {
+		log.Fatal("need base directory")
+	}
 
 	addr := ":9876"
 	if flags.NArg() == 1 {
 		addr = flags.Arg(0)
 	}
 
-	network.Server(ctx.Store(), addr)
+	network.Server(ctx.Store(), addr, baseDirectory)
 	return 0
 }

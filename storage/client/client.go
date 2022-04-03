@@ -18,6 +18,7 @@ package client
 
 import (
 	"encoding/gob"
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -116,10 +117,6 @@ func (store *ClientStore) sendRequest(Type string, Payload interface{}) (*networ
 }
 
 func (store *ClientStore) Create(repository string, config storage.StoreConfig) error {
-	return nil
-}
-
-func (store *ClientStore) Open(repository string) error {
 	addr := repository[9:]
 	if !strings.Contains(addr, ":") {
 		addr = addr + ":9876"
@@ -130,7 +127,43 @@ func (store *ClientStore) Open(repository string) error {
 		return err
 	}
 
-	result, err := store.sendRequest("ReqOpen", nil)
+	result, err := store.sendRequest("ReqCreate", network.ReqCreate{
+		StoreConfig: config,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = result.Payload.(network.ResCreate).Err
+	if err == nil {
+		fmt.Printf("created repository at plakar://%s/%s\n", addr, config.Uuid)
+	}
+
+	return err
+}
+
+func (store *ClientStore) Open(repository string) error {
+	addr := repository[9:]
+
+	tmp := strings.Split(addr, "/")
+	if len(tmp) != 2 {
+		return fmt.Errorf("invalid URL")
+	}
+	addr = tmp[0]
+	repository = tmp[1]
+
+	if !strings.Contains(addr, ":") {
+		addr = addr + ":9876"
+	}
+
+	err := store.connect(addr)
+	if err != nil {
+		return err
+	}
+
+	result, err := store.sendRequest("ReqOpen", network.ReqOpen{
+		Uuid: repository,
+	})
 	if err != nil {
 		return err
 	}

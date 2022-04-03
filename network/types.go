@@ -12,11 +12,21 @@ type Request struct {
 	Payload interface{}
 }
 
+type ReqCreate struct {
+	StoreConfig storage.StoreConfig
+}
+
+type ResCreate struct {
+	Err error
+}
+
 type ReqOpen struct {
+	Uuid string
 }
 
 type ResOpen struct {
 	StoreConfig storage.StoreConfig
+	Err         error
 }
 
 type ReqGetChunks struct {
@@ -170,7 +180,12 @@ type ResCommit struct {
 }
 
 func ProtocolRegister() {
+	gob.Register(storage.StoreConfig{})
+
 	gob.Register(Request{})
+
+	gob.Register(ReqCreate{})
+	gob.Register(ResCreate{})
 
 	gob.Register(ReqOpen{})
 	gob.Register(ResOpen{})

@@ -4,6 +4,7 @@ import (
 	"encoding/gob"
 	"log"
 	"net"
+	"path/filepath"
 	"sync"
 
 	"github.com/google/uuid"
@@ -11,7 +12,7 @@ import (
 	"github.com/poolpOrg/plakar/storage"
 )
 
-func Server(store *storage.Store, addr string) {
+func Server(store *storage.Store, addr string, baseDirectory string) {
 
 	ProtocolRegister()
 
@@ -26,11 +27,11 @@ func Server(store *storage.Store, addr string) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		go handleConnection(store, c)
+		go handleConnection(store, c, baseDirectory)
 	}
 }
 
-func handleConnection(store *storage.Store, conn net.Conn) {
+func handleConnection(store *storage.Store, conn net.Conn, baseDirectory string) {
 	decoder := gob.NewDecoder(conn)
 	encoder := gob.NewEncoder(conn)
 
@@ -48,16 +49,45 @@ func handleConnection(store *storage.Store, conn net.Conn) {
 		}
 
 		switch request.Type {
+		case "ReqCreate":
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				logger.Trace("%s: Create(%s)", clientUuid, request.Payload.(ReqCreate).StoreConfig)
+				config := request.Payload.(ReqCreate).StoreConfig
+				err = store.Create(filepath.Join(baseDirectory, config.Uuid), config)
+				result := Request{
+					Uuid:    request.Uuid,
+					Type:    "ResCreate",
+					Payload: ResCreate{Err: err},
+				}
+				err = encoder.Encode(&result)
+				if err != nil {
+					logger.Warn("%s", err)
+				}
+			}()
+
 		case "ReqOpen":
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				logger.Trace("%s: Open", clientUuid)
-				result := Request{
-					Uuid:    request.Uuid,
-					Type:    "ResOpen",
-					Payload: ResOpen{StoreConfig: store.Configuration()},
+				logger.Trace("%s: Open(%s)", clientUuid, request.Payload.(ReqOpen).Uuid)
+				err = store.Open(filepath.Join(baseDirectory, request.Payload.(ReqOpen).Uuid))
+				var result Request
+				if err != nil {
+					result = Request{
+						Uuid:    request.Uuid,
+						Type:    "ResOpen",
+						Payload: ResOpen{StoreConfig: storage.StoreConfig{}, Err: err},
+					}
+				} else {
+					result = Request{
+						Uuid:    request.Uuid,
+						Type:    "ResOpen",
+						Payload: ResOpen{StoreConfig: store.Configuration(), Err: nil},
+					}
 				}
+
 				err = encoder.Encode(&result)
 				if err != nil {
 					logger.Warn("%s", err)
