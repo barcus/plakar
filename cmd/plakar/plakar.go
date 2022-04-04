@@ -35,8 +35,8 @@ type Plakar struct {
 	KeyID       string
 	MachineID   string
 
-	//	keypair          *encryption.Keypair
-	secret *encryption.Secret
+	keypair *encryption.Keypair
+	secret  *encryption.Secret
 
 	store *storage.Store
 
@@ -239,6 +239,7 @@ func main() {
 			}
 			break
 		}
+		ctx.keypair = keypair
 
 		encryptedSecret, err := local.GetEncryptedSecret(ctx.Workdir, store.Configuration().Encryption)
 		if err != nil {
@@ -261,6 +262,7 @@ func main() {
 
 	ctx.store = store
 	ctx.store.SetSecret(ctx.secret)
+	ctx.store.SetKeypair(ctx.keypair)
 	ctx.store.SetCache(ctx.localCache)
 	ctx.store.SetUsername(ctx.Username)
 	ctx.store.SetHostname(ctx.Hostname)
