@@ -12,6 +12,22 @@ type Request struct {
 	Payload interface{}
 }
 
+type ReqChallenge struct {
+	PublicKey []byte
+}
+
+type ResChallenge struct {
+	Challenge []byte
+}
+
+type ReqChallengeResponse struct {
+	Signature []byte
+}
+
+type ResChallengeResponse struct {
+	Authenticated bool
+}
+
 type ReqCreate struct {
 	StoreConfig storage.StoreConfig
 }
@@ -183,6 +199,12 @@ func ProtocolRegister() {
 	gob.Register(storage.StoreConfig{})
 
 	gob.Register(Request{})
+
+	gob.Register(ReqChallenge{})
+	gob.Register(ResChallenge{})
+
+	gob.Register(ReqChallengeResponse{})
+	gob.Register(ResChallengeResponse{})
 
 	gob.Register(ReqCreate{})
 	gob.Register(ResCreate{})

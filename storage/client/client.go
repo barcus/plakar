@@ -17,6 +17,7 @@
 package client
 
 import (
+	"crypto"
 	"encoding/gob"
 	"fmt"
 	"log"
@@ -116,6 +117,34 @@ func (store *ClientStore) sendRequest(Type string, Payload interface{}) (*networ
 	return &result, nil
 }
 
+func (store *ClientStore) challenge() error {
+	fmt.Println(store.Keypair)
+	result, err := store.sendRequest("ReqChallenge", network.ReqChallenge{
+		PublicKey: store.Keypair.PublicKey,
+	})
+	if err != nil {
+		return err
+	}
+
+	signature, err := store.Keypair.PrivateKey.Sign(nil, result.Payload.(network.ResChallenge).Challenge, crypto.Hash(0))
+	if err != nil {
+		return err
+	}
+
+	result, err = store.sendRequest("ReqChallengeResponse", network.ReqChallengeResponse{
+		Signature: signature,
+	})
+	if err != nil {
+		return err
+	}
+
+	if !result.Payload.(network.ResChallengeResponse).Authenticated {
+		return fmt.Errorf("challenge failed")
+	}
+
+	return nil
+}
+
 func (store *ClientStore) Create(repository string, config storage.StoreConfig) error {
 	addr := repository[9:]
 	if !strings.Contains(addr, ":") {
@@ -123,6 +152,11 @@ func (store *ClientStore) Create(repository string, config storage.StoreConfig) 
 	}
 
 	err := store.connect(addr)
+	if err != nil {
+		return err
+	}
+
+	err = store.challenge()
 	if err != nil {
 		return err
 	}
@@ -161,6 +195,11 @@ func (store *ClientStore) Open(repository string) error {
 		return err
 	}
 
+	err = store.challenge()
+	if err != nil {
+		return err
+	}
+
 	result, err := store.sendRequest("ReqOpen", network.ReqOpen{
 		Uuid: repository,
 	})
@@ -171,7 +210,6 @@ func (store *ClientStore) Open(repository string) error {
 	store.config = result.Payload.(network.ResOpen).StoreConfig
 
 	return nil
-
 }
 
 func (store *ClientStore) Configuration() storage.StoreConfig {
