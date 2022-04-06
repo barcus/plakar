@@ -58,24 +58,24 @@ func cmd_ls(ctx Plakar, args []string) int {
 }
 
 func list_snapshots(store *storage.Store) {
-	snapshots, err := getSnapshots(store, nil)
+	metadatas, err := getMetadatas(store, nil)
 	if err != nil {
 		log.Fatalf("%s: could not fetch snapshots list", flag.CommandLine.Name())
 	}
 
-	for _, snapshot := range snapshots {
+	for _, metadata := range metadatas {
 		fmt.Fprintf(os.Stdout, "%s%38s%10s %s\n",
-			snapshot.CreationTime.UTC().Format(time.RFC3339),
-			snapshot.Uuid,
-			humanize.Bytes(snapshot.Size),
-			strings.Join(snapshot.Filesystem.ScannedDirectories, ", "))
+			metadata.CreationTime.UTC().Format(time.RFC3339),
+			metadata.Uuid,
+			humanize.Bytes(metadata.Size),
+			strings.Join(metadata.ScannedDirectories, ", "))
 	}
 }
 
 func list_snapshot(store *storage.Store, args []string) {
 	snapshots, err := getSnapshots(store, args)
 	if err != nil {
-		log.Fatalf("%s: could not fetch snapshots list", flag.CommandLine.Name())
+		log.Fatalf("%s: could not fetch snapshots list: %s", flag.CommandLine.Name(), err)
 	}
 
 	for offset, snap := range snapshots {
@@ -130,7 +130,7 @@ func list_snapshot(store *storage.Store, args []string) {
 func list_snapshot_recursive(store *storage.Store, args []string) {
 	snapshots, err := getSnapshots(store, args)
 	if err != nil {
-		log.Fatalf("%s: could not fetch snapshots list", flag.CommandLine.Name())
+		log.Fatalf("%s: could not fetch snapshots list: %s", flag.CommandLine.Name(), err)
 	}
 
 	for offset, snapshot := range snapshots {
@@ -146,7 +146,7 @@ func list_snapshot_recursive(store *storage.Store, args []string) {
 		}
 
 		directories := make([]string, 0)
-		for _, name := range snapshot.Filesystem.ListDirectories() {
+		for _, name := range snapshot.Index.Filesystem.ListDirectories() {
 			directories = append(directories, name)
 		}
 		sort.Slice(directories, func(i, j int) bool {
@@ -161,7 +161,7 @@ func list_snapshot_recursive(store *storage.Store, args []string) {
 		}
 
 		filenames := make([]string, 0)
-		for _, name := range snapshot.Filesystem.ListFiles() {
+		for _, name := range snapshot.Index.Filesystem.ListFiles() {
 			filenames = append(filenames, name)
 		}
 		sort.Slice(filenames, func(i, j int) bool {
@@ -199,7 +199,7 @@ func list_snapshot_recursive(store *storage.Store, args []string) {
 
 func list_snapshot_recursive_directory(snapshot *snapshot.Snapshot, directory string) {
 	directories := make([]string, 0)
-	for _, name := range snapshot.Filesystem.ListDirectories() {
+	for _, name := range snapshot.Index.Filesystem.ListDirectories() {
 		directories = append(directories, name)
 	}
 	sort.Slice(directories, func(i, j int) bool {
@@ -238,7 +238,7 @@ func list_snapshot_recursive_directory(snapshot *snapshot.Snapshot, directory st
 	}
 
 	filenames := make([]string, 0)
-	for _, name := range snapshot.Filesystem.ListFiles() {
+	for _, name := range snapshot.Index.Filesystem.ListFiles() {
 		filenames = append(filenames, name)
 	}
 	sort.Slice(filenames, func(i, j int) bool {

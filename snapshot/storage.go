@@ -11,53 +11,55 @@ func snapshotFromBytes(data []byte) (*Snapshot, error) {
 	}
 
 	snapshot := &Snapshot{}
-	snapshot.Uuid = snapshotStorage.Uuid
-	snapshot.CreationTime = snapshotStorage.CreationTime
-	snapshot.Version = snapshotStorage.Version
-	snapshot.Hostname = snapshotStorage.Hostname
-	snapshot.Username = snapshotStorage.Username
-	snapshot.CommandLine = snapshotStorage.CommandLine
-	snapshot.MachineID = snapshotStorage.MachineID
-	snapshot.PublicKey = snapshotStorage.PublicKey
-
-	snapshot.Filesystem = snapshotStorage.Filesystem
-
-	snapshot.Pathnames = snapshotStorage.Pathnames
-	snapshot.Objects = snapshotStorage.Objects
-	snapshot.Chunks = snapshotStorage.Chunks
-	snapshot.ChunkToObjects = snapshotStorage.ChunkToObjects
-	snapshot.ContentTypeToObjects = snapshotStorage.ContentTypeToObjects
-	snapshot.ObjectToPathnames = snapshotStorage.ObjectToPathnames
-
-	snapshot.Size = snapshotStorage.Size
-
-	snapshot.Filesystem.Reindex()
+	snapshot.Metadata = snapshotStorage.Metadata
+	snapshot.Index = snapshotStorage.Index
+	snapshot.Index.Filesystem.Reindex()
 
 	return snapshot, nil
 }
 
 func snapshotToBytes(snapshot *Snapshot) ([]byte, error) {
 	snapshotStorage := SnapshotStorage{}
-	snapshotStorage.Uuid = snapshot.Uuid
-	snapshotStorage.CreationTime = snapshot.CreationTime
-	snapshotStorage.Version = snapshot.Version
-	snapshotStorage.Hostname = snapshot.Hostname
-	snapshotStorage.Username = snapshot.Username
-	snapshotStorage.CommandLine = snapshot.CommandLine
-	snapshotStorage.MachineID = snapshot.MachineID
-	snapshotStorage.PublicKey = snapshot.PublicKey
-
-	snapshotStorage.Filesystem = snapshot.Filesystem
-
-	snapshotStorage.Pathnames = snapshot.Pathnames
-	snapshotStorage.Objects = snapshot.Objects
-	snapshotStorage.Chunks = snapshot.Chunks
-	snapshotStorage.ChunkToObjects = snapshot.ChunkToObjects
-	snapshotStorage.ObjectToPathnames = snapshot.ObjectToPathnames
-	snapshotStorage.ContentTypeToObjects = snapshot.ContentTypeToObjects
-	snapshotStorage.Size = snapshot.Size
+	snapshotStorage.Metadata = snapshot.Metadata
+	snapshotStorage.Index = snapshot.Index
 
 	serialized, err := json.Marshal(snapshotStorage)
+	if err != nil {
+		return nil, err
+	}
+
+	return serialized, nil
+}
+
+func indexFromBytes(data []byte) (*Index, error) {
+	var index Index
+	if err := json.Unmarshal(data, &index); err != nil {
+		return nil, err
+	}
+	index.Filesystem.Reindex()
+	return &index, nil
+}
+
+func indexToBytes(index *Index) ([]byte, error) {
+	serialized, err := json.Marshal(index)
+	if err != nil {
+		return nil, err
+	}
+
+	return serialized, nil
+}
+
+func metadataFromBytes(data []byte) (*Metadata, error) {
+	var metadata Metadata
+	if err := json.Unmarshal(data, &metadata); err != nil {
+		return nil, err
+	}
+
+	return &metadata, nil
+}
+
+func metadataToBytes(metadata *Metadata) ([]byte, error) {
+	serialized, err := json.Marshal(metadata)
 	if err != nil {
 		return nil, err
 	}
