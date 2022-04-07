@@ -154,6 +154,26 @@ func handleConnection(store *storage.Store, conn net.Conn, baseDirectory string)
 				}
 			}()
 
+		case "ReqGetMetadata":
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				logger.Trace("%s: GetMetadata(%s)", clientUuid, request.Payload.(ReqGetMetadata).Uuid)
+				data, err := store.GetMetadata(request.Payload.(ReqGetMetadata).Uuid)
+				result := Request{
+					Uuid: request.Uuid,
+					Type: "ResGetMetadata",
+					Payload: ResGetMetadata{
+						Data: data,
+						Err:  err,
+					},
+				}
+				err = encoder.Encode(&result)
+				if err != nil {
+					logger.Warn("%s", err)
+				}
+			}()
+
 		case "ReqGetIndex":
 			wg.Add(1)
 			go func() {
@@ -380,6 +400,27 @@ func handleConnection(store *storage.Store, conn net.Conn, baseDirectory string)
 					Uuid: request.Uuid,
 					Type: "ResPutObject",
 					Payload: ResPutObject{
+						Err: err,
+					},
+				}
+				err = encoder.Encode(&result)
+				if err != nil {
+					logger.Warn("%s", err)
+				}
+			}()
+
+		case "ReqPutMetadata":
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				logger.Trace("%s: PutMetadata()", clientUuid)
+				txUuid := request.Payload.(ReqPutMetadata).Transaction
+				tx := transactions[txUuid]
+				err := tx.PutMetadata(request.Payload.(ReqPutMetadata).Data)
+				result := Request{
+					Uuid: request.Uuid,
+					Type: "ResPutMetadata",
+					Payload: ResPutMetadata{
 						Err: err,
 					},
 				}

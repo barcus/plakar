@@ -32,14 +32,14 @@ func New(store *storage.Store) (*Snapshot, error) {
 		store:       store,
 		transaction: tx,
 
-		Metadata: Metadata{
+		Metadata: &Metadata{
 			Uuid:         tx.GetUuid(),
 			CreationTime: time.Now(),
 			Version:      storage.VERSION,
-			Hostname:     store.GetHostname(),
-			Username:     store.GetUsername(),
-			CommandLine:  store.GetCommandLine(),
-			MachineID:    store.GetMachineID(),
+			Hostname:     "",
+			Username:     "",
+			CommandLine:  "",
+			MachineID:    "",
 			PublicKey:    base64.StdEncoding.EncodeToString(pubkey),
 
 			Statistics: Statistics{
@@ -58,7 +58,7 @@ func New(store *storage.Store) (*Snapshot, error) {
 			},
 		},
 
-		Index: Index{
+		Index: &Index{
 			Filesystem: filesystem.NewFilesystem(),
 
 			Pathnames: make(map[string]string),
@@ -96,9 +96,8 @@ func Load(store *storage.Store, Uuid string) (*Snapshot, error) {
 
 	snapshot := &Snapshot{}
 	snapshot.store = store
-
-	snapshot.Metadata = *metadata
-	snapshot.Index = *index
+	snapshot.Metadata = metadata
+	snapshot.Index = index
 
 	return snapshot, nil
 }
@@ -108,6 +107,7 @@ func GetMetadata(store *storage.Store, Uuid string) (*Metadata, bool, error) {
 	secret := store.GetSecret()
 	keypair := store.GetKeypair()
 
+	var orig_buffer []byte
 	var buffer []byte
 
 	cacheMiss := false
@@ -131,6 +131,7 @@ func GetMetadata(store *storage.Store, Uuid string) (*Metadata, bool, error) {
 		}
 		buffer = tmp
 	}
+	orig_buffer = buffer
 
 	if secret != nil {
 		tmp, err := encryption.Decrypt(secret.Key, buffer)
@@ -171,7 +172,8 @@ func GetMetadata(store *storage.Store, Uuid string) (*Metadata, bool, error) {
 	}
 
 	if cache != nil && cacheMiss {
-		putMetadataCache(store, metadata.Uuid, buffer)
+		logger.Trace("snapshot: cache.PutMetadata(%s)", Uuid)
+		cache.PutMetadata(metadata.Uuid, orig_buffer)
 	}
 
 	return metadata, verified, nil
@@ -181,6 +183,7 @@ func GetIndex(store *storage.Store, Uuid string) (*Index, []byte, error) {
 	cache := store.GetCache()
 	secret := store.GetSecret()
 
+	var orig_buffer []byte
 	var buffer []byte
 
 	cacheMiss := false
@@ -204,6 +207,7 @@ func GetIndex(store *storage.Store, Uuid string) (*Index, []byte, error) {
 		}
 		buffer = tmp
 	}
+	orig_buffer = buffer
 
 	if secret != nil {
 		tmp, err := encryption.Decrypt(secret.Key, buffer)
@@ -229,7 +233,8 @@ func GetIndex(store *storage.Store, Uuid string) (*Index, []byte, error) {
 	checksum := sha256.Sum256(buffer)
 
 	if cache != nil && cacheMiss {
-		putIndexCache(store, Uuid, buffer)
+		logger.Trace("snapshot: cache.PutIndex(%s)", Uuid)
+		cache.PutIndex(Uuid, orig_buffer)
 	}
 
 	return index, checksum[:], nil
@@ -359,48 +364,6 @@ func (snapshot *Snapshot) PutMetadataCache(data []byte) error {
 	return cache.PutMetadata(snapshot.Metadata.Uuid, buffer)
 }
 
-func putIndexCache(store *storage.Store, Uuid string, data []byte) error {
-	cache := store.GetCache()
-	secret := store.GetSecret()
-
-	buffer := data
-	if store.Configuration().Compression != "" {
-		buffer = compression.Deflate(buffer)
-	}
-
-	if secret != nil {
-		tmp, err := encryption.Encrypt(secret.Key, buffer)
-		if err != nil {
-			return err
-		}
-		buffer = tmp
-	}
-
-	logger.Trace("snapshot: cache.PutIndex(%s)", Uuid)
-	return cache.PutIndex(Uuid, buffer)
-}
-
-func putMetadataCache(store *storage.Store, Uuid string, data []byte) error {
-	cache := store.GetCache()
-	secret := store.GetSecret()
-
-	buffer := data
-	if store.Configuration().Compression != "" {
-		buffer = compression.Deflate(buffer)
-	}
-
-	if secret != nil {
-		tmp, err := encryption.Encrypt(secret.Key, buffer)
-		if err != nil {
-			return err
-		}
-		buffer = tmp
-	}
-
-	logger.Trace("snapshot: cache.PutMetadata(%s)", Uuid)
-	return cache.PutMetadata(Uuid, buffer)
-}
-
 func (snapshot *Snapshot) PutIndexCache(data []byte) error {
 	cache := snapshot.store.GetCache()
 	secret := snapshot.store.GetSecret()
@@ -494,14 +457,14 @@ func (snapshot *Snapshot) Commit() error {
 	cache := snapshot.store.GetCache()
 	keypair := snapshot.store.GetKeypair()
 
-	serializedIndex, err := indexToBytes(&snapshot.Index)
+	serializedIndex, err := indexToBytes(snapshot.Index)
 	if err != nil {
 		return err
 	}
 	indexChecksum := sha256.Sum256(serializedIndex)
 	snapshot.Metadata.Checksum = indexChecksum[:]
 
-	serializedMetadata, err := metadataToBytes(&snapshot.Metadata)
+	serializedMetadata, err := metadataToBytes(snapshot.Metadata)
 	if err != nil {
 		return err
 	}

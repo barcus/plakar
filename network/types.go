@@ -69,6 +69,15 @@ type ResGetIndexes struct {
 	Err     error
 }
 
+type ReqGetMetadata struct {
+	Uuid string
+}
+
+type ResGetMetadata struct {
+	Data []byte
+	Err  error
+}
+
 type ReqGetIndex struct {
 	Uuid string
 }
@@ -178,6 +187,15 @@ type ResPutObject struct {
 	Err error
 }
 
+type ReqPutMetadata struct {
+	Transaction string
+	Data        []byte
+}
+
+type ResPutMetadata struct {
+	Err error
+}
+
 type ReqPutIndex struct {
 	Transaction string
 	Data        []byte
@@ -221,6 +239,9 @@ func ProtocolRegister() {
 	gob.Register(ReqGetObjects{})
 	gob.Register(ResGetObjects{})
 
+	gob.Register(ReqGetMetadata{})
+	gob.Register(ResGetMetadata{})
+
 	gob.Register(ReqGetIndex{})
 	gob.Register(ResGetIndex{})
 
@@ -256,6 +277,9 @@ func ProtocolRegister() {
 
 	gob.Register(ReqPutObject{})
 	gob.Register(ResPutObject{})
+
+	gob.Register(ReqPutMetadata{})
+	gob.Register(ResPutMetadata{})
 
 	gob.Register(ReqPutIndex{})
 	gob.Register(ResPutIndex{})
